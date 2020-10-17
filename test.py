@@ -4,13 +4,17 @@ import matplotlib.pyplot as plt
 
 from rl.gridworld import Gridworld2D
 
+dim = (20, 20)
+start = (0, 0)
+target = (18, 17)
 
-b = np.full((20,20), False)
+b = np.full(dim, False)
 b[0:5,[2,16]] = True
 b[7,4:18] = True
-b[2:15,10] = True
+b[4:15,10] = True
 b[12:20,14] = True
-env = Gridworld2D(20,20,0,0,18,17,blocked=b)
+
+env = Gridworld2D(dim, start, target, blocked=b)
 del b
 
 
@@ -36,7 +40,7 @@ def update_Q(s0, a, s1, r, learning_rate=0.05, discount=0.95):
 
 def plot():
     plt.clf()
-    env.plot(Q=Q, visits=False)
+    env.plot(Q=Q, visits=True)
     plt.draw()
     plt.pause(0.001)
     

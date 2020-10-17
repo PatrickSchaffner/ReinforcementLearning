@@ -7,11 +7,10 @@ import matplotlib.pyplot as plt
 class Gridworld2D():
     
     
-    def __init__(self, dim_x, dim_y, start_x, start_y, target_x, target_y, step_penalty=1, target_reward=None, memory_size=16, blocked=None):
-        
-        self.shape = (dim_x, dim_y)
-        self.start = (start_x, start_y)
-        self.target = (target_x, target_y)
+    def __init__(self, dim, start, target, step_penalty=1, target_reward=None, memory_size=16, blocked=None):
+        self.shape = dim
+        self.start = start
+        self.target = target
         self.actions = IntEnum('Action2D', ['RIGHT', 'UP', 'LEFT', 'DOWN'], start=0)
         self.step_penalty = step_penalty
         if target_reward is None:
