@@ -3,8 +3,10 @@ from enum import IntEnum
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .ql import Environment
 
-class Gridworld2D():
+
+class Gridworld2D(Environment):
     
     
     def __init__(self, dim, start, target, step_penalty=1, target_reward=None, memory_size=16, blocked=None):
@@ -186,4 +188,12 @@ class Gridworld2D():
         if history.ndim > 1:
             history = np.array([h[0] for h in history] + [history[-1][2]])
         return history
-        
+    
+    
+    def current_state(self):
+        return self.state
+    
+    def execute(self, action):
+        return self.walk(action)
+    
+
