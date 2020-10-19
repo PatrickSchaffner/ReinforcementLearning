@@ -34,7 +34,9 @@ class AlgoLab():
     def plot(self):
         plot_gridworld(self.grid,
                        Q=self.Q,
-                       episodes=self.episodes)
+                       episodes=self.episodes,
+                       colorbar=False)
+        plt.title('LR = %.2f' % (self.algo.learning_rate))
         self.episodes = []
     
     def create(learning_rate):
@@ -50,24 +52,27 @@ class AlgoLab():
                            discount_factor=0.975)
         return AlgoLab(grid, Q, algo)
 
-algos = AlgoLab.create(learning_rate=[0.05, 0.1, 0.2, 0.3])
+algos = AlgoLab.create(learning_rate=[0.05, 0.2, 0.35, 0.5, 0.7])
 
 def plot():
     plt.clf()
-    N = len(algos)
     
-    plt.subplot(2, 1, 2)
+    plt.subplot(1, 2, 2)
     plt.title('Performance')
     plt.xlabel('Episodes')
     plt.ylabel('Cumulative Rewards')
     rewards = [np.array(a.rewards)[np.newaxis,:] for a in algos]
     if rewards[0].size > 0:
         rewards = np.transpose(np.concatenate(tuple(rewards), axis=0))
-        plt.plot(rewards)
+        plt.plot(np.cumsum(rewards, axis=0))
         plt.legend(['lr=%.2f' % (a.algo.learning_rate) for a in algos])
     
+    N = len(algos)
+    width = 2
     for i in range(N):
-        plt.subplot(2, N, i+1)
+        col = (i % width)
+        row = np.int(np.floor(i/np.float(width)))
+        plt.subplot(np.int(np.ceil(N/np.float(width))), 2 * width, 1 + col + 2 * width * row)
         algos[i].plot()
     plt.draw()
     plt.pause(0.001)
