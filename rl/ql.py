@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import numpy as np
 
@@ -10,19 +11,31 @@ class Environment(ABC):
         pass
     
     @abstractmethod
-    def execute(self, action)
+    def execute(self, action):
+        pass
+    
+    @abstractmethod
+    def is_terminal(self):
+        pass
+    
+    @abstractmethod
+    def reset(self):
         pass
 
 
 class QFunction(ABC):
     
     @abstractmethod
-    def max_value(self, state):
+    def max(self, state):
         pass
     
-    @abstractmethod
+    def max_value(self, state):
+        (val, _) = self.max(state)
+        return val
+    
     def max_action(self, state):
-        pass
+        (_, action) = self.max(state)
+        return action
     
     @abstractmethod
     def evaluate(self, state, action):
@@ -33,36 +46,59 @@ class QFunction(ABC):
         pass
 
 
-class QLAlgo():
+def epsilon_greedy(action_generator, epsilon=0.015):
     
-    def __init__(self, env: Environment, Q: QFunction, learning_rate=0.1, discount_factor=0.95, eps_greedy=0.03):
+    if isinstance(action_generator, (np.ndarray, list)):
+        options = action_generator
+        def random_choice(state, action):
+            action = np.random.choice(options)
+            if not isinstance(action, tuple):
+                action = (action,)
+            return action
+        action_generator = random_choice
+    
+    def behavior(state, action):
+        if np.random.rand() < epsilon:
+            action = action_generator(state, action)
+        return action
+    return behavior
+
+
+class QLAlgorithm():
+    
+    def __init__(self, env: Environment, Q: QFunction, learning_rate=0.1, discount_factor=0.95, behavior=None):
         self.environment = env
         self.Q = Q
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
+        self.behavior = behavior
     
-    def runStep(self):
+    def run_step(self):
+        
+        if self.environment.is_terminal():
+            self.environment.reset()
         
         s0 = self.environment.current_state()
-        a = self.Q.max_action(s0)  # TODO epsilon greedy
-        (s0, a, s1, r, t) = self.environment.execute(a)
+        (q0, a) = self.Q.max(s0)
+        if self.behavior is not None:
+            a = self.behavior(s0, a)
+        r = self.environment.execute(a)
+        s1 = self.environment.current_state()
+        t = self.environment.is_terminal()
         
-        q0 = self.Q.evaluate(s0, a)
         q1 = self.Q.max_value(s1)
         delta = self.learning_rate * (r + self.discount_factor * q1 - q0)
         self.Q.update(s0, a, delta)
         
-        # reset if t
-        
         return (s0, a, s1, r, t)
     
-    def runEpisode(self, max_steps=None):
-        t = False
+    def run_episode(self, max_steps=None):
         steps = []
-        while not t and (max_steps is None or len(steps) < max_steps):
-            step = self.runStep()
-            (_,_,_,_,t) = step
-            steps.append(step)
+        self.environment.reset()
+        while not self.environment.is_terminal() \
+              and (max_steps is None or len(steps) < max_steps):
+            steps.append(self.run_step())
+            t = self.environment.is_terminal()
         return steps
 
 
@@ -81,14 +117,18 @@ class TabularQFunction(QFunction):
     def max_value(self, state):
         return self.Q[self._idx(state)].max()
     
-    def max_action(self, state):
+    def max(self, state):
         q = self.Q[self._idx(state)]
         if not self.randomize:
-            return q.argmax()
+            a = q.argmax()
+            v = q[a]
         else:
-            a = np.where(q == q.max())
-            a = a if len(a) < 2 else np.random.choice(a, 1)[0]
-            return a
+            v = q.max()
+            a = np.transpose(np.array(np.where(q == v)))
+            a = a[np.random.randint(0, a.shape[0]),:]
+            a = tuple(a)
+        a = self._coords(action=a)
+        return (v, a)
     
     def update(self, state, action, delta):
         self.Q[self._idx(state, action)] += delta
@@ -98,3 +138,17 @@ class TabularQFunction(QFunction):
         if action is not None:
             idx = idx + (np.ravel_multi_index(action, self.action_shape),)
         return idx
+    
+    def _coords(self, state=None, action=None):
+        if state is not None:
+            idx = state
+            shape = self.state_shape
+        elif action is not None:
+            idx = action
+            shape = self.action_shape
+        else:
+            raise ValueError('One of state or action must be given.')
+        if state is not None and action is not None:
+            raise ValueError('Only one of state and action must be given.')
+        coords = tuple([c[0] for c in np.unravel_index(idx, shape)])
+        return coords
