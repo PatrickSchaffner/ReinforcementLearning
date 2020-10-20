@@ -7,6 +7,14 @@ import numpy as np
 class Environment(ABC):
     
     @abstractmethod
+    def state_shape(self):
+        pass
+    
+    @abstractmethod
+    def action_shape(self):
+        pass
+    
+    @abstractmethod
     def current_state(self):
         pass
     
@@ -64,33 +72,51 @@ def epsilon_greedy(action_generator, epsilon=0.015):
     return behavior
 
 
-class QLAlgorithm():
+class Algo(ABC):
     
-    def __init__(self, env: Environment, Q: QFunction, learning_rate=0.1, discount_factor=0.95, behavior=None):
+    def __init__(self, env:Environment, Q:QFunction):
         self.environment = env
         self.Q = Q
+
+    @abstractmethod
+    def run_step(self):
+        pass
+    
+    @abstractmethod
+    def run_episode(self, max_steps=None):
+        pass
+    
+
+class QLAlgo(Algo):
+    
+    def __init__(self, env: Environment, Q: QFunction, learning_rate=0.1, discount_factor=0.95, behavior=None):
+        super().__init__(env=env, Q=Q)
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.behavior = behavior
     
-    def run_step(self):
-        
+    def act(self):
         if self.environment.is_terminal():
             self.environment.reset()
-        
         s0 = self.environment.current_state()
-        (q0, a) = self.Q.max(s0)
+        a = self.Q.max_action(s0)
         if self.behavior is not None:
             a = self.behavior(s0, a)
         r = self.environment.execute(a)
         s1 = self.environment.current_state()
         t = self.environment.is_terminal()
+        return (s0, a, s1, r, t)
+    
+    def run_step(self):
+        step = self.act()
+        self.update(*step[:-1])
+        return step
         
+    def update(self, s0, a, s1, r):
+        q0 = self.Q.evaluate(s0, a)
         q1 = self.Q.max_value(s1)
         delta = self.learning_rate * (r + self.discount_factor * q1 - q0)
         self.Q.update(s0, a, delta)
-        
-        return (s0, a, s1, r, t)
     
     def run_episode(self, max_steps=None):
         steps = []
@@ -102,11 +128,52 @@ class QLAlgorithm():
         return steps
 
 
+class DynaQ(QLAlgo):
+    
+    def __init__(self, env: Environment, Q: QFunction, batch_size=16, memory_size=256, learning_rate=0.1, discount_factor=0.95, behavior=None):
+        super().__init__(env=env, Q=Q, learning_rate=learning_rate, discount_factor=discount_factor, behavior=behavior)
+        self.memory_size = memory_size
+        self.batch_size = batch_size
+        self.forget()
+    
+    def remember(self, s0, a, s1, r, t):
+        self.memory[self.memory_idx] = (s0, a, s1, r, t)
+        self.memory_idx = (self.memory_idx + 1) % self.memory_size
+        if not self.memory_full and self.memory_idx == 0:
+                self.memory_full = True
+
+    def forget(self):
+        self.memory = np.full((self.memory_size,), None)
+        self.memory_idx = 0
+        self.memory_full = False
+    
+    def run_step(self, batch_size=None):
+        step = self.learn_step()
+        self.remember(*step)
+        self.plan_step(batch_size=batch_size)
+        return step
+    
+    def learn_step(self):
+        return super().run_step()
+
+    def plan_step(self, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
+        memory = self.memory
+        if not self.memory_full:
+            if self.memory_idx < batch_size:
+                return
+            memory = memory[:self.memory_idx]
+        episodes = np.random.choice(memory, batch_size)
+        for step in episodes:
+            self.update(*step[:-1])
+
+
 class TabularQFunction(QFunction):
     
-    def __init__(self, state_shape, action_shape, initial_value=0, randomize_equal_actions=True):
-        self.state_shape = state_shape
-        self.action_shape = action_shape
+    def __init__(self, env:Environment, initial_value=0, randomize_equal_actions=True):
+        self.state_shape = env.state_shape()
+        self.action_shape = env.action_shape()
         self.shape = (np.prod(np.array(self.state_shape)), np.prod(np.array(self.action_shape)))
         self.Q = np.full(self.shape, initial_value, dtype=np.float)
         self.randomize = randomize_equal_actions

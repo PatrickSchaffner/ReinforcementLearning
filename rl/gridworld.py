@@ -9,7 +9,7 @@ from .ql import Environment, QFunction
 class Gridworld(Environment):
     
     
-    def __init__(self, dim, start, target, step_penalty=1, target_reward=None, memory_size=16, blocked=None):
+    def __init__(self, dim, start, target, step_penalty=1, target_reward=None, blocked=None):
         self.shape = dim
         self.start = start
         self.target = target
@@ -30,7 +30,12 @@ class Gridworld(Environment):
         self.blocked = blocked
         
         self.reset()
+        
+    def state_shape(self):
+        return self.shape
     
+    def action_shape(self):
+        return np.shape(self.actions)
     
     def is_terminal(self, state=None):
         if state is None:
@@ -130,12 +135,11 @@ def plot_gridworld(grid:Gridworld,
         if history.ndim > 1:
             history = np.array([h[0] for h in history] + [history[-1][2]])
         return history
-    if episodes is not None:
+    if episodes is not None and len(episodes) > 0:
         episodes = [to_path(history) for history in episodes]
-        
-        
+        alpha = 1.0 / (1 + np.log(len(episodes)))
         for p in episodes:
-            plt.plot(p[:,0], p[:,1], color='r', alpha=0.2)
+            plt.plot(p[:,0], p[:,1], color='r', alpha=alpha)
     
     if isinstance(start, bool):
         start = grid.start if start else None

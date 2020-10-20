@@ -3,27 +3,57 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from rl.gridworld import Gridworld, plot_gridworld
-from rl.ql import QLAlgorithm, TabularQFunction, epsilon_greedy
+from rl.ql import DynaQ, QLAlgo, TabularQFunction, epsilon_greedy
+
 
 dim = (20, 20)
 start = (0, 0)
 target = (18, 17)
 
-b = np.full(dim, False)
-b[0:5,[2,16]] = True
-b[7,4:18] = True
-b[4:15,10] = True
-b[12:20,14] = True
+blocked = np.full(dim, False)
+blocked[0:5,[2,16]] = True
+blocked[7,4:18] = True
+blocked[4:15,10] = True
+blocked[12:20,14] = True
+
+epsilon = 0.1
+
+def params(algoType):
+    p = {}
+    if issubclass(algoType, QLAlgo):
+        p = {**p,
+             'learning_rate': 0.3,
+             'discount_factor': 0.975}
+    if issubclass(algoType, DynaQ):
+        p = {**p,
+             'batch_size': 8,
+             'memory_size': 2048}
+    return p
+
+algos = [(QLAlgo, {'learning_rate': 0.05}),
+         QLAlgo,
+         (QLAlgo, {'learning_rate': 0.85}),
+         (QLAlgo, {'discount_factor': 0.65}),
+         DynaQ,
+         (DynaQ, {'learning_rate': 0.05, 'batch_size': 32})]
 
 
-class AlgoLab():
+class AlgoInstance():
     
     def __init__(self, grid, Q, algo):
+        
         self.grid = grid
         self.Q = Q
         self.algo = algo
         self.episodes = []
         self.rewards = []
+        
+        self.name = type(self.algo).__name__
+        if isinstance(self.algo, QLAlgo):
+            self.name += ' [lr=%.2f' % (self.algo.learning_rate)
+            if isinstance(self.algo, DynaQ):
+                self.name += ', bs=%d' % (self.algo.batch_size)
+        self.name += ']'
     
     def run_episode(self):
         history = self.algo.run_episode()
@@ -36,28 +66,53 @@ class AlgoLab():
                        Q=self.Q,
                        episodes=self.episodes,
                        colorbar=False)
-        plt.title('LR = %.2f' % (self.algo.learning_rate))
+        plt.title(self.name)
         self.episodes = []
+
+
+def create_instance(algoType):
     
-    def create(learning_rate):
-        if isinstance(learning_rate, list):
-            return [AlgoLab.create(lr) for lr in learning_rate]
-        grid = Gridworld(dim, start, target, blocked=b)
-        Q = TabularQFunction(dim, (len(grid.actions),), initial_value=0)
-        behavior = epsilon_greedy(grid.actions, epsilon=0.015)
-        algo = QLAlgorithm(env=grid,
-                           Q=Q,
-                           behavior=behavior,
-                           learning_rate=learning_rate,
-                           discount_factor=0.975)
-        return AlgoLab(grid, Q, algo)
+    if isinstance(algoType, list):
+        return [create_instance(a) for a in algoType]
+    if isinstance(algoType, tuple):
+        p = algoType[1]
+        algoType = algoType[0]
+    else:
+        p = {}
+        
+    grid = Gridworld(dim, start, target, blocked=blocked)
+    Q = TabularQFunction(grid, initial_value=0)
+    behavior = epsilon_greedy(grid.actions, epsilon=epsilon)
+    algo = algoType(env=grid, Q=Q, **{**params(algoType), **p})
+    return AlgoInstance(grid, Q, algo)
 
-algos = AlgoLab.create(learning_rate=[0.05, 0.2, 0.35, 0.5, 0.7])
+algos = create_instance(algos)
 
-def plot():
+
+#matplotlib.use('Qt4agg')
+plt.figure()
+plt.ion()
+
+def plot_algos():
+    
     plt.clf()
     
-    plt.subplot(1, 2, 2)
+    N = len(algos)
+    P = N + 1
+    if P<4:
+        dim = (1, P)
+    else:
+        d = np.sqrt(np.float(P))
+        cols = np.int(np.ceil(d))
+        rows = np.int(np.floor(d))
+        if cols * rows < P: rows = cols
+        dim = (rows, cols)
+    
+    for i in range(N):
+        plt.subplot(*dim, i+1)
+        algos[i].plot()
+    
+    plt.subplot(*dim, N + 1)
     plt.title('Performance')
     plt.xlabel('Episodes')
     plt.ylabel('Cumulative Rewards')
@@ -65,29 +120,20 @@ def plot():
     if rewards[0].size > 0:
         rewards = np.transpose(np.concatenate(tuple(rewards), axis=0))
         plt.plot(np.cumsum(rewards, axis=0))
-        plt.legend(['lr=%.2f' % (a.algo.learning_rate) for a in algos])
+        plt.legend([a.name for a in algos])
     
-    N = len(algos)
-    width = 2
-    for i in range(N):
-        col = (i % width)
-        row = np.int(np.floor(i/np.float(width)))
-        plt.subplot(np.int(np.ceil(N/np.float(width))), 2 * width, 1 + col + 2 * width * row)
-        algos[i].plot()
     plt.draw()
     plt.pause(0.001)
     
-#matplotlib.use('Qt4agg')
-plt.figure()
-plt.ion()
 plot()
 plt.show()
 
-for e in range(3000):
+
+for e in range(1000):
     for a in algos:
         a.run_episode()
-    if e%100 == 0:
-        plot()
+    if e%50 == 0:
+        plot_algos()
 
 plot()
 input('Press [ENTER] to quit.')
