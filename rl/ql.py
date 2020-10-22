@@ -56,6 +56,12 @@ class QFunction(ABC):
 
 def epsilon_greedy(action_generator, epsilon=0.015):
     
+    if isinstance(action_generator, tuple):
+        n_actions = np.prod(np.array(action_generator))
+        a = np.unravel_index([i for i in range(n_actions)], shape=action_generator)
+        a = [(a[j][i] for j in range(len(action_generator))) for i in range(n_actions)]
+        action_generator = a
+    
     if isinstance(action_generator, (np.ndarray, list)):
         options = action_generator
         def random_choice(state, action):
@@ -83,7 +89,7 @@ class Algo(ABC):
         pass
     
     @abstractmethod
-    def run_episode(self, max_steps=None):
+    def run_episode(self, max_steps=None, after_step_func=None):
         pass
     
 
@@ -118,13 +124,14 @@ class QLAlgo(Algo):
         delta = self.learning_rate * (r + self.discount_factor * q1 - q0)
         self.Q.update(s0, a, delta)
     
-    def run_episode(self, max_steps=None):
+    def run_episode(self, max_steps=None, after_step_func=None):
         steps = []
         self.environment.reset()
         while not self.environment.is_terminal() \
               and (max_steps is None or len(steps) < max_steps):
             steps.append(self.run_step())
-            t = self.environment.is_terminal()
+            if after_step_func is not None:
+                after_step_func()
         return steps
 
 

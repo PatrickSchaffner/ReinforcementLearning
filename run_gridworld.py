@@ -125,7 +125,7 @@ def plot_algos():
     plt.draw()
     plt.pause(0.001)
     
-plot()
+plot_algos()
 plt.show()
 
 
