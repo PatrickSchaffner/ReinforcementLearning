@@ -3,17 +3,18 @@ from enum import IntEnum
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .ql import Environment, QFunction
+from . import Environment, StateSpace, ActionSpace
+from .ql import QFunction
 
 
 class Gridworld(Environment):
     
     
     def __init__(self, dim, start, target, step_penalty=1, target_reward=None, blocked=None):
+        super().__init__(StateSpace(dim), ActionSpace((4,)))
         self.shape = dim
         self.start = start
         self.target = target
-        self.actions = list(IntEnum('GridworldAction', ['RIGHT', 'UP', 'LEFT', 'DOWN'], start=0))
         self.step_penalty = step_penalty
         if target_reward is None:
             target_reward = 2*np.sum(np.array(self.shape))
@@ -30,12 +31,6 @@ class Gridworld(Environment):
         self.blocked = blocked
         
         self.reset()
-        
-    def state_shape(self):
-        return self.shape
-    
-    def action_shape(self):
-        return np.shape(self.actions)
     
     def is_terminal(self, state=None):
         if state is None:
@@ -67,11 +62,11 @@ class Gridworld(Environment):
     def reset(self):
         self.state = self.start
     
-    
     def action_delta(self, action):
         a = int(action)*np.pi/2.0
         return np.round([np.cos(a), np.sin(a)])
     
+    @property
     def current_state(self):
         return self.state
     

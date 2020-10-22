@@ -3,39 +3,14 @@ from enum import Enum
 
 import numpy as np
 
-
-class Environment(ABC):
-    
-    @abstractmethod
-    def state_shape(self):
-        pass
-    
-    @abstractmethod
-    def action_shape(self):
-        pass
-    
-    @abstractmethod
-    def current_state(self):
-        pass
-    
-    @abstractmethod
-    def execute(self, action):
-        pass
-    
-    @abstractmethod
-    def is_terminal(self):
-        pass
-    
-    @abstractmethod
-    def reset(self):
-        pass
+from .. import Environment
 
 
 class QFunction(ABC):
     
     @abstractmethod
     def max(self, state):
-        pass
+        raise NotImplementedError
     
     def max_value(self, state):
         (val, _) = self.max(state)
@@ -47,35 +22,11 @@ class QFunction(ABC):
     
     @abstractmethod
     def evaluate(self, state, action):
-        pass
+        raise NotImplementedError
     
     @abstractmethod
     def update(self, state, action, delta):
-        pass
-
-
-def epsilon_greedy(action_generator, epsilon=0.015):
-    
-    if isinstance(action_generator, tuple):
-        n_actions = np.prod(np.array(action_generator))
-        a = np.unravel_index([i for i in range(n_actions)], shape=action_generator)
-        a = [(a[j][i] for j in range(len(action_generator))) for i in range(n_actions)]
-        action_generator = a
-    
-    if isinstance(action_generator, (np.ndarray, list)):
-        options = action_generator
-        def random_choice(state, action):
-            action = np.random.choice(options)
-            if not isinstance(action, tuple):
-                action = (action,)
-            return action
-        action_generator = random_choice
-    
-    def behavior(state, action):
-        if np.random.rand() < epsilon:
-            action = action_generator(state, action)
-        return action
-    return behavior
+        raise NotImplementedError
 
 
 class Algo(ABC):
@@ -86,11 +37,11 @@ class Algo(ABC):
 
     @abstractmethod
     def run_step(self):
-        pass
+        raise NotImplementedError
     
     @abstractmethod
-    def run_episode(self, max_steps=None, after_step_func=None):
-        pass
+    def run_episode(self, max_steps=None):
+        raise NotImplementedError
     
 
 class QLAlgo(Algo):
@@ -104,12 +55,12 @@ class QLAlgo(Algo):
     def act(self):
         if self.environment.is_terminal():
             self.environment.reset()
-        s0 = self.environment.current_state()
+        s0 = self.environment.current_state
         a = self.Q.max_action(s0)
         if self.behavior is not None:
             a = self.behavior(s0, a)
         r = self.environment.execute(a)
-        s1 = self.environment.current_state()
+        s1 = self.environment.current_state
         t = self.environment.is_terminal()
         return (s0, a, s1, r, t)
     
@@ -179,8 +130,10 @@ class DynaQ(QLAlgo):
 class TabularQFunction(QFunction):
     
     def __init__(self, env:Environment, initial_value=0, randomize_equal_actions=True):
-        self.state_shape = env.state_shape()
-        self.action_shape = env.action_shape()
+        if not (env.state_space.is_discrete() and env.action_space.is_discrete()):
+            raise ValueError('Only discrete spaces allowed in TabularQFunction.')
+        self.state_shape = env.state_space.shape
+        self.action_shape = env.action_space.shape
         self.shape = (np.prod(np.array(self.state_shape)), np.prod(np.array(self.action_shape)))
         self.Q = np.full(self.shape, initial_value, dtype=np.float)
         self.randomize = randomize_equal_actions

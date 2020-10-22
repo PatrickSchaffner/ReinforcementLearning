@@ -1,13 +1,15 @@
 import gym
 import numpy as np
 
-from ..ql import Environment
+from .. import Environment, StateSpace, ActionSpace
 
 class Cartpole(Environment):
     
     def __init__(self, discretize_num=11):
         self.env = None
         self.reset()
+        super().__init__(StateSpace(tuple(np.full((4,), discretize_num))),
+                         ActionSpace((2,)))
         self._position = Discretizer(1.5, discretize_num)
         self._velocity = Discretizer(2.0,  discretize_num)
         self._angle    = Discretizer(0.4,  discretize_num)
@@ -22,21 +24,13 @@ class Cartpole(Environment):
     def is_terminal(self):
         return self.terminal
     
+    @property
     def current_state(self):
         return self._discretize(*self.state)
     
     def execute(self, action):
         (self.state, reward, self.terminal, _) = self.env.step(action[0])
         return reward
-    
-    def action_shape(self):
-        return (self.env.action_space.n,)
-    
-    def state_shape(self):
-        return (self._position.num,
-                self._velocity.num,
-                self._angle.num,
-                self._rotation.num)
     
     def render(self):
         self.env.render()

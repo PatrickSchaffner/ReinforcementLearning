@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from rl.gym import Cartpole
-from rl.ql import DynaQ, QLAlgo, TabularQFunction, epsilon_greedy
+from rl.ql import DynaQ, QLAlgo, TabularQFunction
+from rl import epsilon_greedy
 
 
 epsilon = 0.05
@@ -63,12 +64,11 @@ def create_instance(algoType):
         
     env = Cartpole(discretize_num=discretize_num)
     Q = TabularQFunction(env, initial_value=0)
-    behavior = epsilon_greedy(env.action_shape(), epsilon=epsilon)
+    behavior = epsilon_greedy(env, epsilon=epsilon)
     algo = algoType(env=env, Q=Q, **{**params(algoType), **p})
     return AlgoInstance(env, Q, algo)
 
 algos = create_instance(algos)
-
 
 #matplotlib.use('Qt4agg')
 plt.figure()

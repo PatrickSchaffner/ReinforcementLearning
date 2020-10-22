@@ -3,7 +3,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from rl.gridworld import Gridworld, plot_gridworld
-from rl.ql import DynaQ, QLAlgo, TabularQFunction, epsilon_greedy
+from rl.ql import DynaQ, QLAlgo, TabularQFunction
+from rl import epsilon_greedy
 
 
 dim = (20, 20)
@@ -82,7 +83,7 @@ def create_instance(algoType):
         
     grid = Gridworld(dim, start, target, blocked=blocked)
     Q = TabularQFunction(grid, initial_value=0)
-    behavior = epsilon_greedy(grid.actions, epsilon=epsilon)
+    behavior = epsilon_greedy(grid.action_space, epsilon=epsilon)
     algo = algoType(env=grid, Q=Q, **{**params(algoType), **p})
     return AlgoInstance(grid, Q, algo)
 
@@ -135,5 +136,5 @@ for e in range(1000):
     if e%50 == 0:
         plot_algos()
 
-plot()
+plot_algos()
 input('Press [ENTER] to quit.')
