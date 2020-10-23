@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 
-from .. import Environment
+from .. import Environment, DiscreteSpace
 
 
 class QFunction(ABC):
@@ -130,8 +130,6 @@ class DynaQ(QLAlgo):
 class TabularQFunction(QFunction):
     
     def __init__(self, env:Environment, initial_value=0, randomize_equal_actions=True):
-        if not (env.state_space.is_discrete() and env.action_space.is_discrete()):
-            raise ValueError('Only discrete spaces allowed in TabularQFunction.')
         self.state_shape = env.state_space.shape
         self.action_shape = env.action_space.shape
         self.shape = (np.prod(np.array(self.state_shape)), np.prod(np.array(self.action_shape)))

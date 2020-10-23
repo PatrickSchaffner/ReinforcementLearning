@@ -17,9 +17,10 @@ class Space(object):
     def ndims(self):
         return len(self.shape)
     
-    def is_discrete(self):
-        return True
-
+    @property
+    def nelems(self):
+        return np.prod(self.shape)
+            
 
 class StateSpace(Space):
     
@@ -29,12 +30,34 @@ class StateSpace(Space):
 
 class ActionSpace(Space):
     
-    def __init__(self, *args, randint=np.random.randint, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._randint = randint
-        
+    
+    @abstractmethod
     def random(self):
-        return (self._randint(d) for d in self.shape)
+        raise NotImplementedError
+
+
+class DiscreteSpace(StateSpace, ActionSpace):
+    
+    def __init__(self, *args, **kwargs):
+        super(ActionSpace, self).__init__(*args, **kwargs)
+        #super(StateSpace, self).__init__(*args, **kwargs)
+    
+    def random(self):
+        return np.random.randint(self.shape)
+    
+    def ravel(self, multi_idx):
+        if isinstance(multi_idx, list):
+            multi_idx = tuple(np.transpose(np.array(multi_idx)))
+        return np.ravel_multi_index(multi_idx, self.shape)
+
+    def unravel(self, idx):
+        multi_idx = np.unravel_index(idx, self.shape)
+        if isinstance(idx, (list, np.ndarray)):
+            multi_idx = np.array(multi_idx)
+            multi_idx = [tuple(multi_idx[:,i]) for i in range(len(idx))]
+        return multi_idx
 
 
 class Environment(ABC):

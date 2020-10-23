@@ -3,7 +3,7 @@ from enum import IntEnum
 import numpy as np
 import matplotlib.pyplot as plt
 
-from . import Environment, StateSpace, ActionSpace
+from . import Environment, DiscreteSpace
 from .ql import QFunction
 
 
@@ -11,7 +11,7 @@ class Gridworld(Environment):
     
     
     def __init__(self, dim, start, target, step_penalty=1, target_reward=None, blocked=None):
-        super().__init__(StateSpace(dim), ActionSpace((4,)))
+        super().__init__(DiscreteSpace(dim), DiscreteSpace((4,)))
         self.shape = dim
         self.start = start
         self.target = target

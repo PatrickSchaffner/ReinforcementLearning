@@ -1,15 +1,15 @@
 import gym
 import numpy as np
 
-from .. import Environment, StateSpace, ActionSpace
+from .. import Environment, DiscreteSpace
 
 class Cartpole(Environment):
     
     def __init__(self, discretize_num=11):
         self.env = None
         self.reset()
-        super().__init__(StateSpace(tuple(np.full((4,), discretize_num))),
-                         ActionSpace((2,)))
+        super().__init__(DiscreteSpace(tuple(np.full((4,), discretize_num))),
+                         DiscreteSpace((2,)))
         self._position = Discretizer(1.5, discretize_num)
         self._velocity = Discretizer(2.0,  discretize_num)
         self._angle    = Discretizer(0.4,  discretize_num)
