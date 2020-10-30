@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 
 
-class Space(object):
+class Space(ABC):
     
     def __init__(self, shape):
         self._shape = shape

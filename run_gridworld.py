@@ -17,26 +17,25 @@ blocked[7,4:18] = True
 blocked[4:15,10] = True
 blocked[12:20,14] = True
 
-epsilon = 0.1
+epsilon = 0.2
 
 def params(algoType):
     p = {}
     if issubclass(algoType, QLAlgo):
         p = {**p,
              'learning_rate': 0.3,
-             'discount_factor': 0.975}
+             'discount_factor': 0.995}
     if issubclass(algoType, DynaQ):
         p = {**p,
-             'batch_size': 8,
-             'memory_size': 2048}
+             'batch_size': 16,
+             'memory_size': 64}
     return p
 
 algos = [(QLAlgo, {'learning_rate': 0.05}),
          QLAlgo,
          (QLAlgo, {'learning_rate': 0.85}),
-         (QLAlgo, {'discount_factor': 0.65}),
          DynaQ,
-         (DynaQ, {'learning_rate': 0.05, 'batch_size': 32})]
+         (DynaQ, {'learning_rate': 0.65, 'batch_size': 64})]
 
 
 class AlgoInstance():
@@ -130,7 +129,7 @@ plot_algos()
 plt.show()
 
 
-for e in range(1000):
+for e in range(2000):
     for a in algos:
         a.run_episode()
     if e%50 == 0:
